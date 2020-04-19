@@ -1,0 +1,152 @@
+---
+title: "Exploring Refrigerated Truck Dataset"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/JacquelineLincroft/iCloud Drive (Archive) - 2Documents/INSH2102 Bostonography/Assignments/FinalProject")
+```
+
+# Import Data:
+```{r libraries}
+library(ggplot2)
+library(tidyverse)
+library(rgdal)
+library(broom)
+library(maps)
+library(plyr)
+library(dplyr)
+library(maptools)
+library(RColorBrewer)
+library(tigris)
+```
+
+```{r import-data}
+setwd("/Users/JacquelineLincroft/Documents/INSH2102 Bostonography/Assignments/FinalProject/")
+truckdf <- read.table(file="Ref_Trucks.csv", header=TRUE, sep=",")
+
+# to view destination and origin lists: ----------
+destination_cities <- unique(truckdf$Destination)
+origin_regions <- unique(truckdf$Region)
+
+# separate out the data for boston
+bostondf <- truckdf[truckdf$Destination == "BOSTON", ]
+bostondf <- bostondf[order(bostondf$Origin), ]
+boston_mean <- mean(bostondf$Distance, na.rm=TRUE)
+
+# separate out the data for LA
+ladf <- truckdf[truckdf$Destination == "LOS ANGELES", ]
+la_mean <- mean(ladf$Distance, na.rm=TRUE)
+```
+
+
+# Basic Visualizations:
+
+```{r basic-visualizations, message=FALSE, warning=FALSE}
+
+# how much data do we have for each of the destination cities?
+hist_destination <- ggplot(data=truckdf, aes(x=Destination)) + geom_histogram(stat="count")
+hist_destination
+
+# which regions does boston's food come from
+hist_boston_region <- ggplot(data=bostondf, aes(x=Region)) + geom_histogram(stat="count")
+hist_boston_region
+
+# which regions send food the furthest distances?
+density_region<-ggplot(data=truckdf, aes(x=Distance, fill=Region)) + scale_fill_hue(name="Region of Origin", labels=unique(truckdf$Region)) + geom_density()
+density_region
+
+# which regions send food the furthest distances (to boston)?
+density_boston_region<-ggplot(data=bostondf, aes(x=Distance, fill=Region)) + scale_fill_hue(name="Region of Origin", labels=unique(bostondf$Region)) + geom_density()
+density_boston_region
+
+```
+
+From these visualizations, it looks like food from Texas and New York generally travel the shortest distances, and food from Mexico/Arizona/Southeast have a lot of variability in the distance travelled, although this may be due to the specificity/generality of the way these regions are categorized.
+
+
+# Trying Out Some Geospatial Visualizations:
+
+```{r map-region-names, message=FALSE, warning=FALSE}
+# to map regions to states ----------
+mapping = data.frame(Region=c("Arizona","California","Floria", "Great Lakes", "Mexico-Arizona", "New York", "Other", "PNW", "Southeast", "Texas", "Mexico-Texas", "Midatlantic", "Indiana", "Mexico-California"), region=c("arizona","california","florida", "michigan", "mexico", "new york", "", "washington", "alabama", "texas", "mexico", "virginia", "indiana", "mexico"))
+truckdf <- full_join(truckdf, mapping, by=c("Region"))
+```
+
+
+
+```{r maps-setup}
+# helpful code referenced: https://stackoverflow.com/questions/21863359/how-can-i-resize-maps-to-fill-the-plot-window
+
+# old way of getting map data: ----------
+# get usa map from "maps" package
+usa_mp <- map("state", fill = TRUE, plot = FALSE)
+USA_SP <- map2SpatialPolygons(usa_mp, IDs = usa_mp$names, 
+                              proj4string = CRS("+proj=longlat +datum=WGS84"))
+USA_DATA <- data.frame(seq_len(length(USA_SP)), row.names = names(USA_SP))
+usa_spdf <- SpatialPolygonsDataFrame(USA_SP, data = USA_DATA)
+# get mexico map from "maps" package
+mexico_mp <- map(database = "world", regions = "Mexico", fill=TRUE, plot=FALSE)
+MEX_SP <- map2SpatialPolygons(mexico_mp, IDs = mexico_mp$names, 
+                              proj4string = CRS("+proj=longlat +datum=WGS84"))
+MEX_DATA <- data.frame(seq_len(length(MEX_SP)), row.names = names(MEX_SP))
+mexico_spdf <- SpatialPolygonsDataFrame(MEX_SP, data = MEX_DATA)
+# plot them
+spplot(usa_spdf, col.regions = "transparent", colorkey = FALSE,
+       par.settings = list(axis.line = list(col = "transparent")))
+spplot(mexico_spdf, col.regions = "transparent", colorkey = FALSE,
+       par.settings = list(axis.line = list(col = "transparent")))
+
+usamexisco_spdf <- merge(usa_spdf, mexico_spdf[1,])
+save(truckdf, usa_spdf, mexico_spdf, file="TruckData.RData")
+```
+
+```{r counts}
+library(plyr)
+region_item_count <- count(truckdf, vars=c('Region'))
+region_total_agg <- aggregate(truckdf, by = list(truckdf$Region), FUN = count)
+
+ggplot() +
+  geom_polygon(data = usa_spdf, aes(fill = state_count, outlier.color=NULL, x = long, y = lat, group = group)) +
+  theme_void() + coord_map()
+
+```
+
+```{r choropleth}
+# to see color palette options
+#display.brewer.all(type="seq")
+
+# make our own color palette
+pal <- brewer.pal(8, "GnBu")
+
+# choropleth
+spplot(states, col.regions = pal, cuts=input$cuts, colorkey = TRUE,
+       par.settings = list(axis.line = list(col = pal)))
+```
+
+```{r text-searching}
+string <- "CABBAGE"
+selected_string <- truckdf[grep(string, truckdf$Commodity), ]
+```
+
+
+```{r merging-data}
+# helpful reference: https://eriqande.github.io/rep-res-web/lectures/making-maps-with-R.html
+
+# new (better) way of getting map data: ----------
+states <- map_data("state")
+mexico <- map_data("world", regions="Mexico")
+
+# merge the two maps
+merged <- rbind(states, mexico)
+
+# merge the map data with truck data 
+merged_data <- full_join(merged, truckdf) # TO FIX: make a smaller modified truckdf with only the info we want
+#merged_data <- geo_join(usa_spdf, truckdf, "ID", "State", how="left")
+#merged_data <- merge(merged, truckdf, by.x=c("region"), by.y=c("State"))
+
+```
+

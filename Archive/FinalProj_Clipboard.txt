@@ -1,0 +1,101 @@
+---
+title: "Exploring Refrigerated Truck Dataset"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/JacquelineLincroft/Documents/INSH2102 Bostonography/Assignments/FinalProject")
+```
+
+
+# Import Data:
+
+```{r import-data}
+
+setwd("/Users/JacquelineLincroft/Documents/INSH2102 Bostonography/Assignments/FinalProject")
+truckdf <- read.table(file="Refrigerated_Trucks.csv", header=TRUE, sep=",")
+
+# see which destination cities we could choose from
+unique(truckdf$Destination)
+
+# separate out the data for boston
+bostondf <- truckdf[truckdf$Destination == "BOSTON", ]
+bostondf <- bostondf[order(bostondf$Origin), ]
+boston_mean <- mean(bostondf$Distance, na.rm=TRUE)
+
+# separate out the data for LA
+ladf <- truckdf[truckdf$Destination == "LOS ANGELES", ]
+la_mean <- mean(ladf$Distance, na.rm=TRUE)
+
+# separate out data for seattle
+seattledf <- truckdf[truckdf$Destination == "SEATTLE", ]
+seattle_mean <- mean(seattledf$Distance, na.rm=TRUE)
+
+```
+
+# Trying Out Some Visualizations:
+
+```{r trying-visualizations, message=FALSE, warning=FALSE}
+
+library(ggplot2)
+
+# how much data do we have for each of the destination cities?
+hist_destination <- ggplot(data=truckdf, aes(x=Destination)) + geom_histogram(stat="count")
+hist_destination
+
+# which regions does boston's food come from
+hist_boston_region <- ggplot(data=bostondf, aes(x=Region)) + geom_histogram(stat="count")
+hist_boston_region
+
+# which regions send food the furthest distances?
+density_region<-ggplot(data=truckdf, aes(x=Distance, fill=Region)) + scale_fill_hue(name="Region of Origin", labels=unique(truckdf$Region)) + geom_density()
+density_region
+
+# which regions send food the furthest distances (to boston)?
+density_boston_region<-ggplot(data=bostondf, aes(x=Distance, fill=Region)) + scale_fill_hue(name="Region of Origin", labels=unique(bostondf$Region)) + geom_density()
+density_boston_region
+
+```
+
+From these visualizations, it looks like food from Texas and New York generally travel the shortest distances, and food from Mexico/Arizona/Southeast have a lot of variability in the distance travelled, although this may be due to the specificity/generality of the way these regions are categorized.
+
+# Trying Out Some Geospatial Visualizations:
+
+```{r trying-geospatial, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rgdal)
+library(broom)
+library(maptools)
+
+# List the regions of origin in the original dataset
+unique(truckdf$Region)
+
+# We need to map these 14 regions onto more specific states so that we can use geospatial data
+# For now, I'm picking a specific state to represent a general area when necessary (ex. Michigan=Great Lakes, Virgina=Midatlantic)
+
+mapping = data.frame(Region=c("Arizona","California","Floria", "Great Lakes", "Mexico-Arizona", "New York", "Other", "PNW", "Southeast", "Texas", "Mexico-Texas", "Midatlantic", "Indiana", "Mexico-California"), State=c("Arizona","California","Florida", "Michigan", "Mexico", "New York", "", "Washington", "Alabama", "Texas", "Mexico", "Virginia", "Indiana", "Mexico"))
+truckdf <- inner_join(truckdf, mapping, by=c("Region"))
+
+library(geojsonio)
+usa_spdf <- geojson_read("us_states.json",  what = "sp")
+mexico_spdf <- geojson_read("mexico.json",  what = "sp")
+usa_github_spdf <- geojson_read("us_states_github.json",  what = "sp")
+
+plot(usa_spdf)
+plot(mexico_spdf)
+plot(usa_github_spdf)
+
+
+## this is still in progress, but we're working on getting a map of US+Mexico set up so we can visualize origin regions, etc.
+setwd("/Users/JacquelineLincroft/Documents/INSH2102 Bostonography/Assignments/FinalProject/PoliticalBoundaries_Shapefiles")
+pb_spdf <- readOGR(
+  dsn=setwd("/Users/JacquelineLincroft/Documents/INSH2102 Bostonography/Assignments/FinalProject/PoliticalBoundaries_Shapefiles"), 
+  layer="boundary_l_v2",
+  verbose=FALSE)
+
+```
+
+
+
+
