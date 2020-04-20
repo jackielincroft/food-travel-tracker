@@ -8,6 +8,8 @@ library(tigris)
 library(plyr)
 
 truckdf <- read.table(file="Ref_Trucks.csv", header=TRUE, sep=",")
+# remove montreal
+
 
 # MAPPINGS: ------------------------------------------------------------------------
 # map mexico regions to mexico
@@ -29,6 +31,8 @@ truckdf$Destination <- str_to_title(truckdf$Destination)
 # get some lists
 destination_cities <- unique(truckdf$Destination)
 origin_regions <- unique(truckdf$Region)
+food_items <- unique(truckdf$Commodity)
+food_items <- str_to_lower(food_items)
 
 # GETTING SPATIAL DATA: -----------------------------------------------------------------
 states <- map_data("state")
@@ -45,7 +49,7 @@ merged <- full_join(merged, map_Region, by=c("region"))
 # merged_data <- full_join(merged, truckdf) #TO FIX: make a smaller modified truckdf with only the info we want
 
 # save final outputs: -------------------------------------------------------------------
-save(truckdf, destination_cities, states, mexico, merged, 
+save(truckdf, destination_cities, states, mexico, merged, food_items, 
      file="ProcessedData.RData")
 
 
