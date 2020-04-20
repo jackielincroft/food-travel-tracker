@@ -5,10 +5,12 @@ library(maps)
 library(maptools)
 library(RColorBrewer)
 library(tigris)
+library(readxl)
 library(plyr)
 
 truckdf <- read.table(file="Ref_Trucks.csv", header=TRUE, sep=",")
 # remove montreal
+truckdf <- truckdf[-c(truckdf$Destination == "Montreal, Que"), ]
 
 
 # MAPPINGS: ------------------------------------------------------------------------
@@ -30,9 +32,9 @@ truckdf$Destination <- str_to_title(truckdf$Destination)
 
 # get some lists
 destination_cities <- unique(truckdf$Destination)
+destination_cities <- destination_cities[destination_cities != "Montreal, Que"]
 origin_regions <- unique(truckdf$Region)
-food_items <- unique(truckdf$Commodity)
-food_items <- str_to_lower(food_items)
+food_items <- read_excel(file.choose())
 
 # GETTING SPATIAL DATA: -----------------------------------------------------------------
 states <- map_data("state")

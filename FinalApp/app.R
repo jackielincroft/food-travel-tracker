@@ -37,10 +37,7 @@ library(maptools)
 library(RColorBrewer)
 library(tigris)
 library(plyr)
-library(tmap)
-library(sf)
 library(rsconnect)
-
 # Load Preprocessed Data
 load(file="ProcessedData.RData")
 
@@ -68,10 +65,10 @@ ui <- fluidPage(
     ),
     column(4,
            # OPTION 1: input to type in the commodity to search for
-           textInput("commodity_input", "Food Item:",
-                     placeholder="Ex: cabbage"),
+           #textInput("commodity_input_UNUSED", "Food Item:",
+           #          placeholder="Ex: cabbage"),
            # OPTION 2: drop down menu to select item
-           selectInput("commodity_input2", "Food Item:", food_itemsLIST, selected=NULL),
+           selectInput("commodity_input", "Food Item:", food_items$Food, selected=NULL),
     ),
     column(2,
            # input to check whether or not to calculate/display carbon emissions

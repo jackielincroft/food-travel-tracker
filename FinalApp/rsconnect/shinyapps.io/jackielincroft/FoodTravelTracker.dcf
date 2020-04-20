@@ -1,0 +1,12 @@
+name: FoodTravelTracker
+title: FoodTravelTracker
+username:
+account: jackielincroft
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2148835
+bundleId: 3037417
+url: https://jackielincroft.shinyapps.io/FoodTravelTracker/
+when: 1587365977.68066
+asMultiple: FALSE
+asStatic: FALSE
